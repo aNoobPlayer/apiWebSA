@@ -17,7 +17,7 @@ app.use(cors({
 const dbConfig = {
   host: process.env.DB_HOST || 'mysql-sm-22-webstudentmanagement-22.f.aivencloud.com',
   user: process.env.DB_USER || 'avnadmin',
-  password: process.env.DB_PASSWORD || 'AVNS_yjWd4zniwN9lIlaw-z7',
+  password: 'AVNS_yjWd4zniwN9lIlaw-z7',
   database: process.env.DB_NAME || 'SA_Web',
   port: process.env.DB_PORT || 10065,
   ssl: {
