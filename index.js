@@ -217,6 +217,22 @@ app.get('/api/sinhvien/hoc-tap', authenticateToken, restrictTo('SinhVien'), asyn
     res.status(500).json({ error: 'Query error', details: process.env.NODE_ENV === 'development' ? err.message : undefined });
   }
 });
+//Teacher: View class
+app.get('/api/giangvien/lophoc', authenticateToken, restrictTo('GiangVien'), async (req, res) => {
+  try {
+    const [rows] = await db.query(`
+      SELECT l.lophoc_id, l.monhoc_id, m.tenmon, l.namhoc, l.hocky
+      FROM LopGiangDay l
+      JOIN MonHoc m ON l.monhoc_id = m.monhoc_id
+      WHERE l.giangvien_id = ?
+    `, [req.user.user_id]);
+
+    res.json(rows);
+  } catch (err) {
+    console.error('Query error:', err);
+    res.status(500).json({ error: 'Query error' });
+  }
+});
 
 // Teacher: Enter grades
 app.post('/api/giangvien/diem', authenticateToken, restrictTo('GiangVien'), async (req, res) => {
@@ -260,6 +276,23 @@ app.put('/api/giangvien/diem', authenticateToken, restrictTo('GiangVien'), async
   } catch (err) {
     console.error('Query error:', err);
     res.status(500).json({ error: 'Query error', details: process.env.NODE_ENV === 'development' ? err.message : undefined });
+  }
+});
+//Teacher: View class id
+app.get('/api/giangvien/lophoc/:lophoc_id', authenticateToken, restrictTo('GiangVien'), async (req, res) => {
+  try {
+    const { lophoc_id } = req.params;
+    const [rows] = await db.query(`
+      SELECT l.lophoc_id, l.hocky, l.namhoc, m.tenmon
+      FROM LopGiangDay l
+      JOIN MonHoc m ON l.monhoc_id = m.monhoc_id
+      WHERE l.lophoc_id = ?
+    `, [lophoc_id]);
+
+    res.json(rows[0] || {});
+  } catch (err) {
+    console.error('Query error:', err);
+    res.status(500).json({ error: 'Query error' });
   }
 });
 
