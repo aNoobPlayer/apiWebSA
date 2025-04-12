@@ -225,7 +225,7 @@ app.get('/api/giangvien/lophoc', authenticateToken, restrictTo('GiangVien'), asy
       FROM LopGiangDay l
       JOIN MonHoc m ON l.monhoc_id = m.monhoc_id
       WHERE l.giangvien_id in (SELECT giangvien_id 
-                                FROM GIANGVIEN GV JOIN USER U on GV.user_id = U.user_id
+                                FROM GiangVien GV JOIN Users U on GV.user_id = U.user_id
                                 where GV.user_id = ?)
     `, [req.user.user_id]);
 
