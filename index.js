@@ -176,21 +176,44 @@ app.get('/api/sinhvien/diem', authenticateToken, restrictTo('SinhVien'), async (
   }
 });
 
-// Student: View course information
-app.get('/api/sinhvien/lophoc', authenticateToken, restrictTo('SinhVien'), async (req, res) => {
+//Student: Information of student
+app.get('/api/sinhvien/thongtin', authenticateToken, restrictTo('SinhVien'), async (req, res) => {
   try {
-    const [rows] = await db.query(`
-      SELECT l.lophoc_id, m.tenmon, g.hoten AS giangvien, l.namhoc, l.hocky
-      FROM DangKyHoc d
-      JOIN LopGiangDay l ON d.lophoc_id = l.lophoc_id
-      JOIN MonHoc m ON l.monhoc_id = m.monhoc_id
-      JOIN GiangVien g ON l.giangvien_id = g.giangvien_id
-      WHERE d.sinhvien_id = ?
-    `, [req.user.user_id]);
+    const [rows] = await db.query(
+      `SELECT hoten, masv, lophoc_id, tenkhoa, email, sdt 
+      FROM SinhVien sv 
+      JOIN DangKyHoc dkh on sv.sinhvien_id = dkh.sinhvien_id 
+      JOIN Khoa k on sv.khoa_id = k.khoa_id 
+      WHERE sv.sinhvien_id = (SELECT sinhvien_id 
+                              FROM SinhVien SV JOIN Users U on SV.user_id = U.user_id
+                              where SV.user_id = ?)`,
+      [req.user.user_id]
+    );
     res.json(rows);
   } catch (err) {
-    console.error('Query error:', err);
-    res.status(500).json({ error: 'Query error', details: process.env.NODE_ENV === 'development' ? err.message : undefined });
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+// Student: View course information
+app.get('/api/sinhvien/lophoc', authenticateToken, async (req, res) => {
+  if (req.user.role !== 'SinhVien') return res.status(403).json({ error: 'Forbidden' });
+  try {
+    const [rows] = await db.query(
+      `SELECT m.monhoc_id, m.tenmon, m.sotinchi, bd.diem_qua_trinh, bd.diem_giua_ky, bd.diem_cuoi_ky
+       FROM LopGiangDay lgd
+       JOIN MonHoc m ON lgd.monhoc_id = m.monhoc_id
+       JOIN DangKyHoc dkh on lgd.lophoc_id = dkh.lophoc_id
+       LEFT JOIN BangDiem bd ON lgd.lophoc_id = bd.lophoc_id AND bd.sinhvien_id = (SELECT sinhvien_id 
+                          FROM SinhVien SV JOIN Users U on SV.user_id = U.user_id
+                          where SV.user_id = ?)
+       WHERE dkh.sinhvien_id = (SELECT sinhvien_id 
+                          FROM SinhVien SV JOIN Users U on SV.user_id = U.user_id
+                          where SV.user_id = ?)`,
+      [req.user.user_id, req.user.user_id]
+    );
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: 'Database error' });
   }
 });
 
@@ -404,6 +427,58 @@ app.get('/api/admin/sinhvien', authenticateToken, restrictTo('Admin'), async (re
   }
 });
 
+// Admin: View department list
+app.get('/api/admin/khoa', authenticateToken, restrictTo('Admin'), async (req, res) => {
+  try {
+    const [rows] = await db.query('SELECT khoa_id,tenkhoa FROM Khoa');
+    res.json(rows);
+  } catch (err) {
+    console.error('Query error:', err);
+    res.status(500).json({ error: 'Query error', details: process.env.NODE_ENV === 'development' ? err.message : undefined });
+  }
+});
+// Admin: View department id monhoc list
+app.get('/api/admin/khoa/:khoa_id/monhoc', authenticateToken, async (req, res) => {
+  if (req.user.role !== 'Admin') return res.status(403).json({ error: 'Forbidden' });
+  try {
+    const [rows] = await db.query('SELECT monhoc_id, tenmon FROM MonHoc WHERE khoa_id = ?', [
+      req.params.khoa_id,
+    ]);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+// Admin: View MonHocCuaLopGiangDay
+app.get('/api/admin/monhoc/:monhoc_id/lophoc', authenticateToken, async (req, res) => {
+  if (req.user.role !== 'Admin') return res.status(403).json({ error: 'Forbidden' });
+  try {
+    const [rows] = await db.query('SELECT lophoc_id FROM LopGiangDay WHERE monhoc_id = ?', [
+      req.params.monhoc_id,
+    ]);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+//Admin: View sinhvien of lopgiangday
+app.get('/api/admin/lophoc/:lophoc_id/sinhvien', authenticateToken, async (req, res) => {
+  if (req.user.role !== 'Admin') return res.status(403).json({ error: 'Forbidden' });
+  try {
+    const [rows] = await db.query(
+      `SELECT sv.sinhvien_id, sv.hoten, sv.masv, bd.diem_qua_trinh, bd.diem_giua_ky, bd.diem_cuoi_ky
+       FROM SinhVien sv
+       JOIN DangKyHoc dkh on dkh.sinhvien_id = sv.sinhvien_id
+       JOIN LopGiangDay lgd ON dkh.lophoc_id = lgd.lophoc_id
+       LEFT JOIN BangDiem bd ON lgd.lophoc_id = bd.lophoc_id AND sv.sinhvien_id = bd.sinhvien_id
+       WHERE lgd.lophoc_id = ?`,
+      [req.params.lophoc_id]
+    );
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: 'Database error' });
+  }
+});
 // Admin: View student grades
 app.get('/api/admin/diem', authenticateToken, restrictTo('Admin'), async (req, res) => {
   try {
