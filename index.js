@@ -558,7 +558,24 @@ app.post('/api/admin/monhoc', authenticateToken, restrictTo('Admin'), async (req
     res.status(500).json({ error: 'Query error', details: process.env.NODE_ENV === 'development' ? err.message : undefined });
   }
 });
-
+// Admin: View user list
+app.get('/api/admin/users', authenticateToken, restrictTo('Admin'), async (req, res) => {
+  try {
+    const [rows] = await db.query(`
+      SELECT u.user_id, u.username, u.role, 
+             COALESCE(sv.hoten, gv.hoten, ad.hoten) AS hoten, 
+             COALESCE(sv.email, gv.email, ad.email) AS email
+      FROM Users u
+      LEFT JOIN SinhVien sv ON u.user_id = sv.user_id
+      LEFT JOIN GiangVien gv ON u.user_id = gv.user_id
+      LEFT JOIN Admin ad ON u.user_id = ad.user_id
+    `);
+    res.json(rows);
+  } catch (err) {
+    console.error('Query error:', err);
+    res.status(500).json({ error: 'Query error', details: process.env.NODE_ENV === 'development' ? err.message : undefined });
+  }
+});
 // Admin: Reset password
 app.post('/api/admin/reset-password', authenticateToken, restrictTo('Admin'), async (req, res) => {
   try {
